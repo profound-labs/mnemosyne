@@ -7,7 +7,7 @@
 % http://profound-labs.github.io/projects/mnemosyne/
 %
 % (c) Gambhiro Bhikkhu, 2014
-% gambhiro@ratanagiri.org.uk
+% gambhiro.bhikkhu.85@gmail.com
 %
 % LPPL LaTeX Pubic Project Licence
 %
@@ -17,7 +17,7 @@
 % ==============
 
 \NeedsTeXFormat{LaTeX2e}
-\ProvidesClass{mnemosyne}[2014/02/01 v0.1 A memoir-based documentclass for poetry with verse numbering in the margin.]
+\ProvidesClass{mnemosyne}[2014/11/23 v0.2 A memoir-based documentclass for poetry with verse numbering in the margin.]
 
 % ========================
 % Preliminary Declarations
@@ -31,11 +31,11 @@
 \RequirePackage{calc}
 
 \pgfkeys{
-  /ARU/.cd,
+  /BOOK/.cd,
   pagePreset/.default=largepage,% "largepage": 6x9in, "smallpage": 5.25x8in
-  pagePreset/.store in=\ARU@pagePreset,
+  pagePreset/.store in=\BOOK@pagePreset,
   babelLanguage/.default=british,
-  babelLanguage/.store in=\ARU@babelLanguage,
+  babelLanguage/.store in=\BOOK@babelLanguage,
 }
 
 % Pass all unknown options to memoir
@@ -43,7 +43,7 @@
   \PassOptionsToClass{\CurrentOption}{memoir}
 }
 
-\ProcessPgfOptions{/ARU}
+\ProcessPgfOptions{/BOOK}
 \ProcessOptions\relax
 
 % ======================
@@ -52,7 +52,323 @@
 
 \LoadClass[11pt,twoside]{memoir}
 
-\RequirePackage{book-core-first}
+% === Book Core ===
+
+\RequirePackage[\BOOK@babelLanguage]{babel}
+\RequirePackage{nag}
+\RequirePackage{xparse}
+\RequirePackage{soul}
+\RequirePackage{textcomp}
+\RequirePackage[cmyk]{xcolor}
+\RequirePackage{graphicx}
+% Add your \graphicspath declaration to your local style.
+\RequirePackage{eso-pic}
+\RequirePackage{ccicons}
+\RequirePackage{multicol}
+\RequirePackage{ifthen}
+\RequirePackage{titletoc}
+\RequirePackage{enumitem}
+\RequirePackage{tikz}
+\usetikzlibrary{positioning}
+
+% === Define colors ===
+
+\definecolor{textbody}{gray}{0.1}
+\definecolor{drop}{gray}{0.7}
+\definecolor{capsline}{gray}{0.3}
+\definecolor{chapnum}{gray}{0.5}
+\definecolor{chaptitle}{gray}{0.3}
+\definecolor{chapsubtitle}{gray}{0.6}
+\definecolor{footnoterule}{gray}{0.5}
+
+% === Load fonts ===
+
+\RequirePackage{fontspec}
+\defaultfontfeatures{Ligatures={TeX}}
+
+% Dummy font commands to use system defaults instead of custom fonts
+
+% TODO: comment these out and define them below as \newfontfamily
+
+\newcommand\oldNumFont{}
+\newcommand\dropFont{}
+\newcommand\chapterTitleFont{}
+\newcommand\chapterNameFont{}
+\newcommand\chapterNumFont{}
+\newcommand\sectionFont{}
+\newcommand\headFont{}
+\newcommand\footFont{}
+\newcommand\tocPageNumFont{}
+
+% If -- dashes don't work for your font, try
+% Renderer = Basic
+% http://tex.stackexchange.com/questions/20580/how-to-enable-ligatures-for-emdash-endash-in-luatex
+
+%\setmainfont
+%[ Ligatures = TeX,
+%  BoldFont = Crimson Semibold,
+%  ItalicFont = TeX Gyre Pagella Italic,
+%  ItalicFeatures = { Ligatures = TeX, Scale = 0.9 } ]
+%{Crimson Roman}
+%
+%\newfontfamily\oldNumFont[Numbers = OldStyle]{Crimson Roman}
+%
+%\newfontfamily\dropFont{Arno Pro Light Display}
+%
+%\newfontfamily\chapterTitleFont{Arno Pro}
+%\newfontfamily\chapterNameFont{Arno Pro}
+%\newfontfamily\chapterNumFont{Arno Pro}
+%
+%\newfontfamily\sectionFont{Arno Pro}
+%
+%\newfontfamily\headFont{Arno Pro}
+%\newfontfamily\footFont{Gentium}
+%
+%\newfontfamily\tocPageNumFont{Gentium}
+
+% Some default font sizes, use \renewcommand to adjust
+
+\newcommand{\chapnamesize}
+  {\@setfontsize\chapnamesize{22}{24}}
+\newcommand{\chaptitlesize}
+  {\@setfontsize\chaptitlesize{13}{20}}
+
+\newcommand{\sectiontitlesize}
+  {\@setfontsize\sectiontitlesize{11.5}{18}}
+
+% other sizes
+
+\newcommand{\smaller}
+  {\@setfontsize\smaller{9}{11}}
+
+% === microtype ===
+
+\RequirePackage[final,babel=true]{microtype}
+\SetTracking[spacing={500,100,}]{encoding=*, family=chapterTitleFont}{40}
+
+% === hyperref ===
+
+\RequirePackage{hyperref}
+
+% TODO: color the link if this is for the web
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=textbody,
+  citecolor=textbody,
+  filecolor=textbody,
+  urlcolor=textbody,
+  unicode=true,
+}
+
+\RequirePackage[
+  open,
+  openlevel=2
+]{bookmark}
+
+% === penalties and hyphenation ===
+
+% memoir's more allowing penalties
+\midsloppy
+
+\renewcommand\britishhyphenmins{{3}{3}}
+
+% The lastparline or the parfillskip solution is overkill in many
+% places. It is optimal for larger paragraphs, but creates too much
+% strech in every other case, particulary not in the main text, such as
+% the TOC and so on.
+%
+% It can be useful with a limited scope, but for general application it
+% becomes more of a problem to check where it has gone too far in
+% adjusting line breaks.
+
+% lastparline:
+%   ``Ensures that the last line of a paragraph is at least as long as the
+%   double value of \parindent. When LuaTEX is used, the solution provided
+%   by Patrick Gundlach is used. With other rendering engines, it is the
+%   native solution provided by Enrico Gregorio that serves as an
+%   implementation.''
+% http://tex.stackexchange.com/questions/28357/ensure-minimal-length-of-last-line/
+
+% Load with draft option to visualize inserted nobreaks.
+% \RequirePackage[lastparline]{impnattypo}
+
+% Alternatively, egreg's native solution:
+% http://tex.stackexchange.com/a/28358/831
+%\setlength{\parfillskip}{0pt plus\dimexpr\textwidth-2\parindent}
+
+% Last line at least 20% of textwidth
+%\parfillskip 0pt plus 0.8\textwidth
+
+\hyphenpenalty=700
+\exhyphenpenalty=50
+\doublehyphendemerits=900
+%\finalhyphendemerits=5000 % default is 5000
+\brokenpenalty=990
+
+\RequirePackage[defaultlines=2,all]{nowidow}
+
+% === common hyphenation exceptions and corrections ===
+
+\hyphenation{season wisdom develop-ment respon-sible pheno-mena
+philo-sophical munindo amaravati thai-land}
+
+%\hyphenation{accur-ately argu-men-ta-tive attach Ayu-dhaya becomes
+%ben-e-fi-cial capa-bil-ity car-ry car-ry-ing cere-monies cere-mony
+%ces-sa-tion chal-lenge chal-leng-ing clas-si-fi-ca-tion
+%clas-si-fi-ca-tions clas-si-fied com-mu-nity con-di-tion
+%con-di-tioned con-struc-tions con-tem-plate con-tem-plat-ing
+%con-tem-pla-tion cul-ti-vate cul-ti-vates cul-ti-vat-ing
+%cul-ti-vation def-i-ni-tion de-ter-mine de-ter-mined dhamma dhammas
+%dis-cern-ment dis-con-tent dis-cur-sive dying em-pha-size
+%enlight-ened equa-nim-ity es-pe-cial-ly estab-lish exist-ence
+%ex-pe-ri-ence hap-pen-ing having ig-no-rance immedi-ately
+%im-per-ma-nent in-nu-mer-a-ble in-se-cu-ri-ty in-spir-ing
+%in-struct-ed in-ves-ti-gate in-ves-ti-ga-tion iso-late iso-lat-ed
+%Keuan lay-peo-ple ma-te-ri-al mat-u-ra-tion medi-tate medi-ta-tion
+%medi-ta-tive mental mon-as-teries mon-as-tery Nana-chat or-dain
+%or-dain-ed or-di-na-tion orig-inate oth-er-wise pene-trat-ing
+%per-son-al per-son-al-ity phe-nom-e-na phe-nom-e-non po-si-tion
+%pow-er pow-ers pre-vi-ous pro-lif-er-ate pro-lif-er-ating
+%pro-lif-er-a-tions puthu-jjana quest-ion rec-i-ta-tion
+%sat-is-fac-tory sen-sa-tion sen-sa-tions sim-i-lar suf-fer-ing
+%sup-po-si-tion syn-on-y-mous tem-per-a-ment tem-per-a-ments tong-rat
+%tran-scend tran-scend-ent tran-scends un-con-di-tioned under-stand
+%under-stood un-hap-pi-ness un-sat-is-fac-tori-ness un-sat-is-fac-tory
+%ven-er-able wea-ri-ness what-ev-er when-ever wher-ever whole-hearted
+%whole-heart-edly wrong-do-ing}
+
+% === soul settings ===
+
+\sodef\soTocChapter{}{.1em}{.5em plus.1em}{.1em plus.1em minus.1em}
+\sodef\soSection{}{.1em}{.5em plus.1em}{.1em plus.1em minus.1em}
+\sodef\soChapter{}{.1em}{.5em plus.1em}{.1em plus.1em minus.1em}
+
+\sodef\soDropcapsA{}{.1em}{.3em plus.1em}{.4em plus.1em minus.1em}
+\sodef\soDropcapsB{}{.1em}{.3em plus.1em}{.4em plus.1em minus.1em}
+
+% === Custom commands and environments ===
+
+\newcommand\dividerRule{%
+{\centering\bigskip
+{\color[gray]{0.6}\rule{0.6\linewidth}{0.2pt}}
+\par\bigskip}%
+}
+
+\newcommand\emptysheet{%
+  \cleardoublepage
+  \thispagestyle{empty}\mbox{}\newpage
+  \thispagestyle{empty}\mbox{}\newpage
+}
+
+\newcommand\emptydoublepage\emptysheet
+
+\newcommand\emptypage{%
+  \clearpage
+  \thispagestyle{empty}\mbox{}\newpage
+}
+
+\newcommand*{\subtitle}[1]{\def\@thesubtitle{#1}}
+\newcommand*{\editionInfo}[1]{\def\@theEditionInfo{#1}}
+\newcommand*{\printedByInfo}[1]{\def\@thePrintedByInfo{#1}}
+\newcommand*{\ISBN}[1]{\def\@theISBN{#1}}
+
+\newcommand\thesubtitle{\@thesubtitle}
+\newcommand\theEditionInfo{\@theEditionInfo}
+\newcommand\thePrintedByInfo{\@thePrintedByInfo}
+\newcommand\theISBN{\@theISBN}
+
+\newsavebox{\quotepagebox}
+\newenvironment{quotepage}[1]
+  {\begin{lrbox}{\quotepagebox}\begin{minipage}{#1}
+   \setlength{\parskip}{0.6\baselineskip}
+   \setlength{\parindent}{0pt}}
+  {\end{minipage}\end{lrbox}%
+   \begin{tikzpicture}[remember picture,overlay]
+   \node at (current page.center) {\usebox{\quotepagebox}};
+   \end{tikzpicture}}
+
+\newenvironment{packeditemize}%
+{\begin{itemize}[
+  itemindent=0pt,
+  leftmargin=15pt,
+  rightmargin=0pt,
+  itemsep=4pt,
+  topsep=0pt,
+  parsep=0pt,
+  partopsep=0pt,
+]%
+}{\end{itemize}}
+
+% old
+%\newenvironment{packeditemize}%
+%{\begin{itemize}%
+%  \setlength{\itemsep}{1pt}%
+%  \setlength{\parskip}{0pt}%
+%  \setlength{\parsep}{0pt}%
+%}{\end{itemize}}
+
+\newlength\qw
+\setlength\qw{17pt}% same as parindent for smallpage
+
+\newcommand{\question}[1]{%
+  \smallskip%
+  \par\noindent\hangindent=\qw%
+  \ifthenelse{\equal{#1}{}}{\textit{Q:}\space}{\textit{#1:}\space}%
+}
+
+\newcommand{\questionBi}[2]{%
+  \smallskip%
+  \par\noindent\hangindent=\qw%
+  \textit{Q: #1}
+  \smallskip%
+  \par\noindent\hangindent=\qw%
+  \textit{Q: #2}
+}
+
+\newcommand{\answer}[1]{%
+  \smallskip%
+  \par\noindent%
+  \ifthenelse{\equal{#1}{}}{\textit{A:}\space}{\textit{#1:}\space}%
+}
+
+% === Renewing package macros ===
+
+\addtodef{\mainmatter}{}{%
+  \addtocontents{toc}{\addvspace{18pt}}%
+  \setcounter{chapter}{0}%
+}
+
+\addtodef{\backmatter}{}{%
+  \addtocontents{toc}{\addvspace{18pt}}%
+  \bookmarksetup{startatroot}%
+}
+
+\renewenvironment{quote}%
+{\small
+\list{}{\rightmargin\leftmargin}%
+\item[]}%
+{\endlist}
+
+\newcommand\quoteref[1]{%
+\par
+{\footnotesize #1}
+\par
+}
+
+\renewcommand\footnoterule{%
+  \vspace*{\baselineskip}%
+  \kern-3\p@
+  {\color{footnoterule}\hrule height 0.25pt width \columnwidth}
+  \kern2.6\p@}
+
+\renewcommand*{\notesname}{Notes}
+\renewcommand*{\notedivision}{\section*{\notesname}}
+\renewcommand*{\pagenotesubhead}[3]{}
+\renewcommand*{\notenumintext}[1]{\textsuperscript{\thinspace [#1]}}
+\renewcommand{\prenoteinnotes}{\par\noindent}
+\renewcommand{\postnoteinnotes}{\par\vspace*{0.5\baselineskip}}
+
 
 \RequirePackage{longtable}
 
@@ -68,13 +384,6 @@
 \renewcommand{\LettrineTextFont}{\scshape\color{capsline}}
 
 % === Custom commands and environments ===
-
-\newenvironment{packeditemize}%
-{\begin{itemize}%
-  \setlength{\itemsep}{1pt}%
-  \setlength{\parskip}{0pt}%
-  \setlength{\parsep}{0pt}%
-}{\end{itemize}}
 
 \def\gobble@spaces{\@ifnextchar\space{\@gobble\gobble@spaces}{}}
 \newcommand{\verseref}[1]{\mbox{}\marginpar{\vspace*{-0.5\marginparpush}\vspace*{1.2pt}\oldNumFont #1.}\gobble@spaces}
@@ -224,11 +533,11 @@
 \renewcommand{\printtoctitle}[1]{%
   \raggedright\vspace*{\toctopskip}%
   \hspace*{17pt}\parbox{0.85\linewidth}{%
-    \raggedright\chapTitleFont\chaptitlesize\MakeUppercase{\soChapter{\contentsname}}%
+    \raggedright\chapterTitleFont\chaptitlesize\MakeUppercase{\soChapter{\contentsname}}%
   }%
 }
 
-\renewcommand{\cftchapterfont}{\chapTitleFont\chaptitlesize\color{chaptitle}}
+\renewcommand{\cftchapterfont}{\chapterTitleFont\chaptitlesize\color{chaptitle}}
 \renewcommand{\cftchapterpagefont}{\tocPageNumFont\normalsize\color{chaptitle}}
 \renewcommand{\cftchapterpresnum}[1]{}
 \setlength{\cftchapternumwidth}{0pt}
@@ -253,7 +562,7 @@
 \renewcommand*{\printbookname}{}
 \renewcommand*{\printbooknum}{}
 
-\renewcommand*{\booktitlefont}{\chapNameFont\chaptitlesize\color{chaptitle}}
+\renewcommand*{\booktitlefont}{\chapterNameFont\chaptitlesize\color{chaptitle}}
 \renewcommand*{\printbooktitle}[1]{\booktitlefont\MakeUppercase{\soChapter{#1}}}
 \renewcommand*{\afterbookskip}{\vfil}
 
@@ -274,9 +583,9 @@
   \addtolength{\beforechapskip}{-4\baselineskip}
   \setlength{\midchapskip}{2\baselineskip}
   \setlength{\afterchapskip}{2em}
-  \renewcommand*{\chapnumfont}{\chapNumFont\chapnamesize}
-  \renewcommand*{\chapnamefont}{\chapNameFont}
-  \renewcommand*{\chaptitlefont}{\chapTitleFont\chaptitlesize}
+  \renewcommand*{\chapnumfont}{\chapterNumFont\chapnamesize}
+  \renewcommand*{\chapnamefont}{\chapterNameFont}
+  \renewcommand*{\chaptitlefont}{\chapterTitleFont\chaptitlesize}
   \renewcommand*{\printchaptername}{}
   \renewcommand*{\printchapternum}{\chapnumfont\color{chapnum}\raggedright\hspace*{17pt}\thechapter}
   \renewcommand*{\printchapternonum}{\chapnumfont\mbox{}\afterchapternum}
@@ -331,7 +640,7 @@
 
 % === Page geometry and layout ===
 
-\ifthenelse{\equal{\ARU@pagePreset}{blurbpocket}}{
+\ifthenelse{\equal{\BOOK@pagePreset}{blurbpocket}}{
 
   % Blurb Pocket size
   %
@@ -393,7 +702,7 @@
   \setlength{\marginparpush}{0.8\baselineskip}
 
 }{
-\ifthenelse{\equal{\ARU@pagePreset}{otherpocket}}{
+\ifthenelse{\equal{\BOOK@pagePreset}{otherpocket}}{
 
   % Other Pocket size
   % ...
@@ -410,5 +719,40 @@
 
 \pagestyle{normalpage}
 
-\RequirePackage{book-core-last}
+% === Packages to be loaded LAST ===
+
+\RequirePackage[perpage,multiple,stable]{footmisc}
+
+%% =================
+%% PDF/X-3:2002 info
+%% =================
+
+% \pdfobjcompresslevel=0%
+% \pdfminorversion=3%
+% \pdfinfo{
+%   /Title (\thetitle)
+%   /Author (\theauthor)
+%   /Subject (buddhism)
+%   /Keywords (buddhism)
+%   /GTS_PDFXVersion (PDF/X-3:2002)
+% }%
+% \pdfpageattr{
+% /MediaBox [0 0 369.00000 594.00000]
+% /BleedBox [0.00000 0.00000 369.00000 594.00000]
+% /CropBox [0 0 369.00000 594.00000]
+% /TrimBox [0.00000 0.00000 369.00000 594.00000]
+% }
+% \pdfcatalog{
+%   /PageMode /UseNone
+%   /OutputIntents [ <<
+%     /Info (none)
+%     /Type /OutputIntent
+%     /S /GTS_PDFX
+%     /OutputConditionIdentifier (Blurb.com)
+%     /RegistryName (http://www.color.org/)
+%   >> ]
+% }%
+
+%% ==============
+
 
